@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.7.6;
+
+pragma solidity ^0.8.0;
 
 import "OERC721.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract chaoticDJs is OERC721 {
     using Strings for uint256;
 
-    mapping(address => uint256) _glAccess;
+    bytes32 private _glRoot;
     uint256 private _glPrice;
     uint256 private _glUserMintLimit;
     uint256 private _glMintLimit;
@@ -16,8 +18,7 @@ contract chaoticDJs is OERC721 {
     uint256 private _glMints; //Amount of mints performed in this mint
 
 
-
-    mapping(address => uint256) _wlAccess;
+    bytes32 private _wlRoot;
     uint256 private _wlPrice;
     uint256 private _wlUserMintLimit;
     uint256 private _wlMintLimit;
@@ -51,24 +52,24 @@ contract chaoticDJs is OERC721 {
         return string(abi.encodePacked(uriLink, "secret.json"));
     }
 
-    function glData(address user) external view returns(bool listed, uint256 userMints, uint256 mints, uint256 price, uint256 userMintLimit, uint256 mintLimit, bool active) {
-        listed = _glAccess[user] == 1;
+    function glData(address user) external view returns(uint256 userMints, uint256 mints, uint256 price, uint256 userMintLimit, uint256 mintLimit, bytes32 root, bool active) {
         userMints = _glUserMints[user];
         mints = _glMints;
         price = _glPrice;
         userMintLimit = _glUserMintLimit;
         mintLimit = _glMintLimit;
         active = _glActive == 1;
+        root = _glRoot;
     }
 
-    function wlData(address user) external view returns(bool listed, uint256 userMints, uint256 mints, uint256 price, uint256 userMintLimit, uint256 mintLimit, bool active) {
-        listed = _wlAccess[user] == 1;
+    function wlData(address user) external view returns(uint256 userMints, uint256 mints, uint256 price, uint256 userMintLimit, uint256 mintLimit, bytes32 root, bool active) {
         userMints = _wlUserMints[user];
         mints = _wlMints;
         price = _wlPrice;
         userMintLimit = _wlUserMintLimit;
         mintLimit = _wlMintLimit;
         active = _wlActive == 1;
+        root = _wlRoot;
     }
 
     function pmData(address user) external view returns(uint256 userMints, uint256 price, uint256 userMintLimit, bool active) {
@@ -82,50 +83,20 @@ contract chaoticDJs is OERC721 {
 
     //Moderator Functions======================================================================================================================================================
 
-    function addGLusers(address[] calldata users) external Manager {
-        uint256 size = users.length;
-
-        for(uint256 t; t < size; ++t) {
-            _glAccess[users[t]] = 1;
-        }
-    }
-
-    function addWLusers(address[] calldata users) external Manager {
-        uint256 size = users.length;
-
-        for(uint256 t; t < size; ++t) {
-            _wlAccess[users[t]] = 1;
-        }
-    }
-
-    function removeGLusers(address[] calldata users) external Manager {
-        uint256 size = users.length;
-
-        for(uint256 t; t < size; ++t) {
-            _glAccess[users[t]] = 0;
-        }
-    }
-
-    function removeWLusers(address[] calldata users) external Manager {
-        uint256 size = users.length;
-
-        for(uint256 t; t < size; ++t) {
-            _wlAccess[users[t]] = 0;
-        }
-    }
-
-    function setGlData(uint256 price, uint256 userMintLimit, uint256 mintLimit, uint256 active) external Manager {
+    function setGlData(uint256 price, uint256 userMintLimit, uint256 mintLimit, bytes32 root, uint256 active) external Manager {
         _glPrice = price;
         _glUserMintLimit = userMintLimit;
         _glMintLimit = mintLimit;
         _glActive = active;
+        _glRoot = root;
     }
 
-    function setWlData(uint256 price, uint256 userMintLimit, uint256 mintLimit, uint256 active) external Manager {
+    function setWlData(uint256 price, uint256 userMintLimit, uint256 mintLimit, bytes32 root, uint256 active) external Manager {
         _wlPrice = price;
         _wlUserMintLimit = userMintLimit;
         _wlMintLimit = mintLimit;
         _wlActive = active;
+        _wlRoot = root;
     }
 
     function setPmData(uint256 price, uint256 userMintLimit, uint256 active) external Manager {
@@ -144,10 +115,12 @@ contract chaoticDJs is OERC721 {
 
     //User Functions======================================================================================================================================================
 
-    function glMint() external payable {
+    function glMint(bytes32[] calldata _merkleProof) external payable {
         require(_glMints < _glMintLimit, "CDS: WL has sold out");
         require(_glActive == 1, "CDS: WL minting is closed");
-        require(_glAccess[msg.sender] == 1, "CDS: Invalid Access");
+
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+        require(MerkleProof.verify(_merkleProof, _glRoot, leaf), "NOT_GOLD_LISTED");
 
         uint256 price = _glPrice;
 
@@ -163,10 +136,12 @@ contract chaoticDJs is OERC721 {
         require(_totalSupply <= _maxSupply, "CDS: Supply Exceeded");
     }
 
-    function wlMint() external payable {
+    function wlMint(bytes32[] calldata _merkleProof) external payable {
         require(_wlMints < _wlMintLimit, "CDS: WL has sold out");
         require(_wlActive == 1, "CDS: WL minting is closed");
-        require(_wlAccess[msg.sender] == 1, "CDS: Invalid Access");
+
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+        require(MerkleProof.verify(_merkleProof, _wlRoot, leaf), "NOT_GOLD_LISTED");
 
         uint256 price = _wlPrice;
 
