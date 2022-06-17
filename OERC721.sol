@@ -110,15 +110,15 @@ abstract contract OERC721 is OMS, ERC165, IERC721, IERC721Metadata{ //OrcaniaERC
         return owner;
     }
 
-    function name() public view override returns (string memory) {
+    function name() external view override returns (string memory) {
         return _name;
     }
 
-    function symbol() public view override returns (string memory) {
+    function symbol() external view override returns (string memory) {
         return _symbol;
     }
     
-    function totalSupply() public view override returns(uint256){return _totalSupply;}
+    function totalSupply() external view override returns(uint256){return _totalSupply;}
 
     function tokenURI(uint256 tokenId) external view virtual override returns (string memory) {
         return string(abi.encodePacked(uriLink, tokenId.toString(), ".json"));
@@ -159,10 +159,6 @@ abstract contract OERC721 is OMS, ERC165, IERC721, IERC721Metadata{ //OrcaniaERC
         _mint(to, amount);
     }
 
-    function adminMint(address to) external payable Manager {
-        _mint(to, msg.value);
-    }
-
     function adminMint(address[] calldata to, uint256[] calldata amount) external Manager {
         uint256 size = to.length;
 
@@ -182,7 +178,7 @@ abstract contract OERC721 is OMS, ERC165, IERC721, IERC721Metadata{ //OrcaniaERC
         _approve(to, tokenId);
     }
 
-    function setApprovalForAll(address operator, bool approved) public override {
+    function setApprovalForAll(address operator, bool approved) external override {
         require(operator != msg.sender, "ERC721: approve to caller");
 
         _operatorApprovals[msg.sender][operator] = approved;
@@ -202,16 +198,25 @@ abstract contract OERC721 is OMS, ERC165, IERC721, IERC721Metadata{ //OrcaniaERC
 
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata _data) external override {
         require(_isApprovedOrOwner(msg.sender, tokenId), "ERC721: transfer caller is not owner nor approved");
-        _safeTransfer(from, to, tokenId, _data);
-    }
-
-    //Internal Functions======================================================================================================================================================
-    function _safeTransfer(address from, address to, uint256 tokenId, bytes memory _data) internal {
         _transfer(from, to, tokenId);
     }
 
+    
+    function burn(uint256 tokenId) external {
+        address owner = _owners[tokenId];
+        require(msg.sender == owner || _tokenApprovals[tokenId] == msg.sender || isApprovedForAll(owner, msg.sender), "ERC721: Not approved or owner");
+
+        _balances[owner] -= 1;
+        _owners[tokenId] = address(0);
+        --_totalSupply;
+
+        _approve(address(0), tokenId);
+
+        emit Transfer(owner, address(0), tokenId);
+    }
+
+    //Internal Functions======================================================================================================================================================
     function _isApprovedOrOwner(address spender, uint256 tokenId) internal view returns (bool) {
-        require(_owners[tokenId] != address(0), "ERC721: operator query for nonexistent token");
         address owner = _owners[tokenId];
         require(spender == owner || _tokenApprovals[tokenId] == spender || isApprovedForAll(owner, spender), "ERC721: Not approved or owner");
         return true;
