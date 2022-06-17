@@ -15,9 +15,8 @@ abstract contract OMS { //Orcania Management Standard
 
     receive() external payable {}
 
-    constructor() {
-        _owner = msg.sender;
-        _manager[msg.sender] = true;
+    constructor(address owner) {
+        _owner = owner;
 
         emit SetManager(msg.sender, true);
     }
@@ -56,11 +55,11 @@ abstract contract OMS { //Orcania Management Standard
 
     //===============
     
-    function withdraw(address payable to, uint256 value) external Manager {
+    function withdraw(address payable to, uint256 value) external Owner {
         require(to.send(value), "OMS: ISSUE_SENDING_FUNDS");    
     }
 
-    function withdrawERC20(address token, address payable to, uint256 value) external Manager {
+    function withdrawERC20(address token, address payable to, uint256 value) external Owner {
         IERC20(token).transfer(to, value);   
     }
 
