@@ -30,7 +30,6 @@ contract chaoticDJs is OERC721 {
 
     uint256 private _pmPrice;
     uint256 private _pmUserMintLimit;
-    uint256 private _pmMintLimit;
     uint256 private _pmActive;
 
     mapping(address => uint256) _pmUserMints; //Amount of mints performed by this user
