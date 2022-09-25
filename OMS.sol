@@ -15,12 +15,13 @@ abstract contract OMS { //Orcania Management Standard
 
     receive() external payable {}
 
-    constructor(address owner) {
-        _owner = owner;
+    constructor() {
+        _owner = msg.sender;
+        _manager[msg.sender] = true;
 
         emit SetManager(msg.sender, true);
     }
-
+    
     //Modifiers ==========================================================================================================================================
     modifier Owner() {
         require(msg.sender == _owner, "OMS: NOT_OWNER");
